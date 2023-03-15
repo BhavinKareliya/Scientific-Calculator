@@ -3,6 +3,7 @@ html {
 }
 
 body {
+    position: relative;
     font-family: sans-serif;
     background-color: #f5f5f5 !important;
 }
@@ -19,6 +20,7 @@ body {
     width: 400px;
     padding: 5px;
     border-radius: 5px;
+    position: relative;
 }
 
 .screen-wrapper #screen {
@@ -45,17 +47,29 @@ body {
     background-color: #fff !important;
 }
 
-.gen-btn:active {
-    background-color: #0d6efd !important;
-    color: #fff !important;
 
-}
-
-.btn:focus {
-    outline: none !important;
-    border: none !important;
-}
 
 .btn:disabled {
     border: none
+}
+
+.btn:active,
+.functions .btn:focus {
+    border: none !important;
+    background-color: #0d6efd !important;
+    color: #fff !important;
+    font-weight: bold;
+}
+
+.unitCtrl.active {
+    border: none !important;
+    border-bottom: 2px solid #0d6efd !important;
+    border-radius: 0px !important;
+    border-bottom-width: 50% !important;
+}
+
+.switch-sides.active {
+    background-color: #0d6efd !important;
+    color: #fff !important;
+    border: none !important;
 }
