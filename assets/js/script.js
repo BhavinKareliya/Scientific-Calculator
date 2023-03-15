@@ -1,8 +1,9 @@
 const __DISPLAY = document.getElementById("screen");
+const __EQ_DISPLAY = document.getElementById("equation-screen")
 
 let generalBtns = document.querySelectorAll(".gen-btn");
-let unitCtrlBtns = document.querySelectorAll(".unitCtrl");
-let extraFuncsBtns = document.querySelectorAll(".extraFuncs");
+let unitCtrlBtns = document.querySelectorAll(".unit-ctrl");
+let extraFuncsBtns = document.querySelectorAll(".extra-functions");
 let frontBtns = document.querySelectorAll(".front");
 let backBtns = document.querySelectorAll(".back");
 let memoryBtns = document.querySelectorAll(".memory-btn");
@@ -10,9 +11,162 @@ let memoryStack = document.getElementById("memory-stack");
 let switchSidesBtn = document.querySelector(".switch-sides");
 
 let isPrevNum = false, allowOnlyNumber = true, isFront = true, isFloat = false;
-let expStack = [], memory = [];
 let braceCnt = 0, htmlContent = '';
+let expStack = [], memory = [];
 let currUnit = 'RAD';
+
+
+const MemorySheet = {
+    appendMemory: (val) => {
+        htmlContent = `<div class="alert alert-dark" role="alert">
+                        <h6> ${val}</h6>
+                    </div>`;
+        memoryStack.insertAdjacentHTML('afterbegin', htmlContent);
+    },
+    replace: (val) => {
+        memoryStack.removeChild(memoryStack.firstChild);
+        console.log(val)
+        MemorySheet.appendMemory(val);
+    },
+    remove: () => {
+        memoryStack.firstChild.remove()
+    },
+    memoryRead: () => {
+        if (isPrevNum) expStack.pop();
+        expStack.push(memory.slice(-1));
+        isPrevNum = true;
+        allowOnlyNumber = false;
+        reloadDisplay();
+    },
+    handleBtns: () => {
+        if (memory.length > 0) {
+            document.getElementById("M+").removeAttribute("disabled")
+            document.getElementById("MR").removeAttribute("disabled")
+            document.getElementById("M-").removeAttribute("disabled")
+            document.getElementById("MC").removeAttribute("disabled")
+            document.getElementById("btm-sheet").removeAttribute("disabled")
+        } else {
+            document.getElementById("M+").setAttribute("disabled", true)
+            document.getElementById("MR").setAttribute("disabled", true)
+            document.getElementById("M-").setAttribute("disabled", true)
+            document.getElementById("MC").setAttribute("disabled", true)
+            document.getElementById("btm-sheet").setAttribute("disabled", true)
+        }
+    }
+}
+
+if (sessionStorage.getItem("Store")) {
+    memory = sessionStorage.getItem("Store");
+    if (memory.length > 0) {
+        memory = memory.split(",");
+        memory.map((x) => {
+            MemorySheet.appendMemory(x)
+        })
+    }
+    MemorySheet.handleBtns()
+}
+
+const YbaseX = () => {
+    allowOnlyNumber = true;
+    expStack.push("**");
+    isPrevNum = false
+}
+
+const push = (val) => {
+    let prev = expStack.slice(-1);
+    if (!isNaN(val)) {
+        //append digits to previous number
+        if (isPrevNum) val = (expStack.pop() * 10) + parseInt(val);
+
+        isPrevNum = true;
+        allowOnlyNumber = false;
+        val = parseInt(val);
+    } else {
+        //prevent from entering operator at first
+        if (expStack.length == 0 && val != '(') return;
+        if (prev == '(' && val == ')') return;
+
+        if (val == '.') {
+            if (isFloat) return;
+
+            isFloat = true;
+            if (!isPrevNum) push(0);
+            push('.')
+            isPrevNum = false;
+            allowOnlyNumber = true;
+        } else { isFloat = false }
+
+        //change operators if TOP is already an operator
+        if (!isPrevNum && val != '(' && val != ')' && val != '.') expStack.pop();
+
+        if (val == '(') {
+            braceCnt++;
+            if (isPrevNum) expStack.push('*');
+        }
+
+        if (val == ')') {
+            if (isPrevNum) {
+                if (braceCnt <= 0) return;
+                braceCnt--;
+            } else if (prev == ')' && braceCnt <= 0) {
+                return;
+            } else {
+                braceCnt--;
+            }
+        }
+
+        isPrevNum = false;
+    }
+    expStack.push(val);
+}
+
+const pop = () => {
+    console.log(expStack)
+    if (expStack.length == 0) return;
+
+    if (isPrevNum) {
+        let prev = expStack.pop();
+        ((prev / 10) != 0) ? expStack.push(Math.round((prev / 10))) : expStack.pop();
+    } else {
+        expStack.pop();
+        isNum = (isNaN(expStack.slice(-1))) ? false : true;
+    }
+}
+
+const reloadDisplay = () => {
+    __DISPLAY.value = expStack.join("");
+}
+
+const calculate = () => {
+    let TOP = expStack.at(-1);
+    while (isNaN(TOP) && TOP != ')') {
+        expStack.pop()
+        TOP = expStack.at(-1);
+    }
+    const exp = expStack.join("");
+    const res = eval(exp);
+
+    __DISPLAY.value = res;
+    __EQ_DISPLAY.value = exp + "=";
+    expStack = [res];
+    isPrevNum = true;
+}
+
+const resetAll = (error = null) => {
+    if (error != null) __DISPLAY.value = 'Invalid Expression!';
+    else __DISPLAY.value = 0;
+    __EQ_DISPLAY.value = ''
+    expStack = [];
+    isPrevNum = false;
+}
+
+const fact = (num) => {
+    let res = 1;
+    while (num > 1) {
+        res *= num--;
+    }
+    return res;
+}
 
 unitCtrlBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -32,18 +186,19 @@ memoryBtns.forEach((btn) => {
                     memory.push(latestVal);
                     sessionStorage.setItem("Store", memory)
                     MemorySheet.appendMemory(latestVal);
+                    MemorySheet.handleBtns()
                     break;
                 case 'M+':
                     var res = parseInt(memory.pop()) + parseInt(latestVal);
                     memory.push(res);
                     sessionStorage.setItem("Store", memory)
-                    MemorySheet.replace(pop);
+                    MemorySheet.replace(res);
                     break;
                 case 'M-':
                     var res = parseInt(memory.pop()) - parseInt(latestVal);
                     memory.push(res);
                     sessionStorage.setItem("Store", memory)
-                    MemorySheet.replace(pop);
+                    MemorySheet.replace(res);
                     break;
                 case 'MC':
                     sessionStorage.removeItem("Store");
@@ -61,7 +216,7 @@ memoryBtns.forEach((btn) => {
 
 extraFuncsBtns.forEach((btn) => {
     btn.addEventListener('click', (e) => {
-        let val = e.target.value, res;
+        let val = e.target.value, res = 0;
         let latestval = expStack.pop();
         switch (val) {
             case 'SIN':
@@ -76,9 +231,8 @@ extraFuncsBtns.forEach((btn) => {
                 if (isPrevNum)
                     res = (currUnit == 'RAD') ? Math.tan(latestval) : Math.tan(latestval * (Math.PI / 180));
                 break;
-            case 'HYP':
-                if (isPrevNum)
-                    res = (currUnit == 'RAD') ? Math.hyp(latestval) : Math.hyp(latestval * (Math.PI / 180));
+            case 'ABS':
+                if (isPrevNum) expStack.push(Math.abs(expStack.pop()));;
                 break;
             case 'RAND':
                 expStack = [];
@@ -93,6 +247,7 @@ extraFuncsBtns.forEach((btn) => {
 generalBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
         let val = e.target.value;
+
         if (allowOnlyNumber && isNaN(val) && val != 'CLS' && val != 'PI' && val != 'EXP') return;
 
         try {
@@ -105,20 +260,21 @@ generalBtns.forEach((btn) => {
                 case 'PI':
                     resetAll();
                     expStack.push(Math.PI);
-                    isPrevNum = true
+                    isPrevNum = true;
                     break;
                 case 'DEL':
                     pop();
                     break;
                 case 'ABS':
-                    if (isPrevNum) expstack.push(Math.abs(expstack.pop()));;
+                    if (isPrevNum) expStack.push(Math.abs(expStack.pop()));;
                     break;
                 case 'INVERSE':
-                    if (isPrevNum) expstack.push(1 / expstack.pop());
+                    if (isPrevNum) expStack.push(1 / expStack.pop());
                     break;
+                case 'EXP':
                 case 'EULER':
                     resetAll();
-                    expstack.push(Math.E);
+                    expStack.push(Math.E);
                     isPrevNum = true;
                     break;
                 case 'SQ':
@@ -133,26 +289,26 @@ generalBtns.forEach((btn) => {
                     if (isPrevNum) expStack.push(Math.cbrt(expStack.pop()));
                     break;
                 case 'FACT':
-                    if (isPrevNum) expstack.push(fact(expstack.pop()));
+                    if (isPrevNum) expStack.push(fact(expStack.pop()));
                     break;
                 case 'Y-SQRT-X':
                 case 'SQRT':
-                    if (isPrevNum) expstack.push(Math.sqrt(expstack.pop()));
+                    if (isPrevNum) expStack.push(Math.sqrt(expStack.pop()));
                     break;
                 case 'Y-BASE-X':
                     if (isPrevNum) YbaseX();
                     break;
                 case 'Y-BASE-E':
-                    if (isPrevNum) expstack.push(Math.exp(expstack.pop()));
+                    if (isPrevNum) expStack.push(Math.exp(expStack.pop()));
                     break;
                 case 'BASE10':
-                    if (isPrevNum) expstack.push(10 ** expstack.pop());
+                    if (isPrevNum) expStack.push(10 ** expStack.pop());
                     break;
                 case 'BASE2':
-                    if (isPrevNum) expstack.push(Math.pow(2, expstack.pop()));
+                    if (isPrevNum) expStack.push(Math.pow(2, expStack.pop()));
                     break;
                 case 'LOG':
-                    if (isPrevNum) expstack.push(Math.log10(expstack.pop()));
+                    if (isPrevNum) expStack.push(Math.log10(expStack.pop()));
                     break;
                 case 'LN':
                     if (isPrevNum) expStack.push(Math.log10(expStack.pop()));
@@ -196,138 +352,3 @@ switchSidesBtn.addEventListener('click', (e) => {
     }
     e.target.classList.toggle("active");
 })
-
-const MemorySheet = {
-    appendMemory: (val) => {
-        htmlContent = `<div class="alert alert-dark" role="alert">
-                        <h6> ${val}</h6>
-                    </div>`;
-        memoryStack.insertAdjacentHTML('afterbegin', htmlContent);
-    },
-    replace: (val) => {
-        memoryStack.removeChild(memoryStack.firstChild);
-        console.log(val)
-        MemorySheet.appendMemory(val);
-    },
-    remove: () => {
-        memoryStack.firstChild.remove()
-    },
-    memoryRead: () => {
-        if (isPrevNum) expstack.pop();
-
-        expstack.push(memory.slice(-1));
-        isPrevNum = true;
-    },
-    handleBtns: () => {
-        if (memory.length > 0) {
-            document.getElementById("M+").removeAttribute("disabled")
-            document.getElementById("MR").removeAttribute("disabled")
-            document.getElementById("M-").removeAttribute("disabled")
-            document.getElementById("MC").removeAttribute("disabled")
-            document.getElementById("btm-sheet").removeAttribute("disabled")
-        } else {
-            document.getElementById("M+").setAttribute("disabled", true)
-            document.getElementById("MR").setAttribute("disabled", true)
-            document.getElementById("M-").setAttribute("disabled", true)
-            document.getElementById("MC").setAttribute("disabled", true)
-            document.getElementById("btm-sheet").setAttribute("disabled", true)
-        }
-    }
-}
-
-if (sessionStorage.getItem("Store")) {
-    memory = sessionStorage.getItem("Store");
-    if (memory.length > 0) {
-        memory = memory.split(",");
-        memory.map((x) => {
-            MemorySheet.appendMemory(x)
-        })
-    }
-    MemorySheet.handleBtns()
-}
-
-const YbaseX = () => {
-    allowOnlyNumber = true;
-    expStack.push("**");
-    isPrevNum = false
-}
-
-const push = (val) => {
-    if (!isNaN(val)) {
-        //append digits to previous number
-        if (isPrevNum) val = (expStack.pop() * 10) + parseInt(val);
-
-        isPrevNum = true;
-        allowOnlyNumber = false;
-        val = parseInt(val);
-    } else {
-        //prevent from entering operator at first
-        if (expStack.length == 0 && val != '(') return;
-
-        if (val == '.' && !isFloat) {
-            isFloat = true;
-            if (isNaN(prev))
-                push(0);
-            push('.')
-        }
-
-        //change operators if TOP is already an operator
-        if (!isPrevNum && val != '(' && val != ')' && val != '.') expStack.pop();
-
-        if (val == '(') {
-            braceCnt++;
-            if (isPrevNum) expStack.push('*');
-        }
-
-        if (val == ')' && isPrevNum) {
-            if (braceCnt <= 0) return;
-            braceCnt--;
-        }
-
-        isPrevNum = false;
-    }
-    expStack.push(val);
-}
-
-const pop = () => {
-    if (expstack.length == 0) return;
-
-    if (isPrevNum) {
-        let prev = expstack.pop();
-        let new_prev = ((prev / 10) != 0) ? Math.round((prev / 10)) : 0;
-        expstack.push(new_prev);
-    } else {
-        expstack.pop();
-    }
-}
-
-const reloadDisplay = () => {
-    __DISPLAY.value = expStack.join("");
-}
-
-const calculate = () => {
-    let TOP = expStack.at(-1);
-    while (isNaN(TOP) && TOP != ')') {
-        expStack.pop()
-        TOP = expStack.at(-1);
-    }
-    const res = eval(expStack.join(""));
-    __DISPLAY.value = res;
-    expStack = [res];
-    isPrevNum = true;
-}
-
-const resetAll = (error) => {
-    console.warn(error)
-    __DISPLAY.value = 0;
-    expStack = [];
-    isPrevNum = false;
-}
-
-const fact = (num) => {
-    let res = 1;
-    while (num > 1) {
-        res *= num--;
-    }
-    return res;
-}
