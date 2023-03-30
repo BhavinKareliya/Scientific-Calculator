@@ -10,11 +10,10 @@ let memoryBtns = document.querySelectorAll(".memory-btn");
 let memoryStack = document.getElementById("memory-stack");
 let switchSidesBtn = document.querySelector(".switch-sides");
 
-let isPrevNum = false, allowOnlyNumber = true, isFront = true, isFloat = false;
+let isPrevNum = false, allowOnlyNumber = true, isFront = true, isFloat = false, isExp = false;
 let braceCnt = 0, htmlContent = '';
 let expStack = [], memory = [];
 let currUnit = 'RAD';
-
 
 const MemorySheet = {
     appendMemory: (val) => {
@@ -66,11 +65,6 @@ if (sessionStorage.getItem("Store")) {
     MemorySheet.handleBtns()
 }
 
-const YbaseX = () => {
-    allowOnlyNumber = true;
-    expStack.push("**");
-    isPrevNum = false
-}
 
 const push = (val) => {
     let prev = expStack.slice(-1);
@@ -126,7 +120,7 @@ const pop = () => {
 
     if (isPrevNum) {
         let prev = expStack.pop();
-        ((prev / 10) != 0) ? expStack.push(Math.round((prev / 10))) : expStack.pop();
+        ((prev / 10) != 0) ? expStack.push(Math.floor((prev / 10))) : expStack.pop();
     } else {
         expStack.pop();
         isNum = (isNaN(expStack.slice(-1))) ? false : true;
@@ -168,10 +162,31 @@ const fact = (num) => {
     return res;
 }
 
+const YbaseX = () => {
+    allowOnlyNumber = true;
+    expStack.push("**");
+    isPrevNum = false
+}
+
+const storeExp = (num) => {
+    var split = num.toExponential().split("+");
+    expStack.push(split[0] + "+");
+    expStack.push(parseInt(split[1]));
+}
+
 unitCtrlBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
         e.target.classList.toggle("active")
-        currUnit = (currUnit == 'RAD') ? 'DEG' : 'RAD';
+        if (e.target.value == 'DEG') {
+            currUnit = (currUnit == 'RAD') ? 'DEG' : 'RAD';
+        } else {
+            isExp = !isExp;
+            if (isExp) {
+                var pop = expStack.pop()
+                storeExp(pop);
+                reloadDisplay();
+            }
+        }
     })
 })
 
